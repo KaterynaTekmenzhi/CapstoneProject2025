@@ -1,0 +1,237 @@
+
+---
+title: "Portugal Student Data Exploration"
+output:
+  pdf_document: default
+  html_document: default
+---
+Importing libraries
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+library(ggplot2)
+library(readr)
+library(reshape2)
+```
+
+Load and Inspect Data
+
+```{r}
+unclean_data <- read_delim("Portugal_Student_Data.csv", delim = ";")
+head(unclean_data)
+```
+
+# Drop Irrelevant Columns
+
+```{r}
+df <- unclean_data %>%
+  select(-c(
+    "Nacionality",
+    "Curricular units 2nd sem (credited)",
+    "Curricular units 2nd sem (enrolled)",
+    "Curricular units 2nd sem (evaluations)",
+    "Curricular units 2nd sem (approved)",
+    "Curricular units 2nd sem (grade)",
+    "Curricular units 2nd sem (without evaluations)",
+    "Curricular units 1st sem (enrolled)",
+    "Curricular units 1st sem (evaluations)",
+    "Curricular units 1st sem (approved)",
+    "Curricular units 1st sem (grade)",
+    "Curricular units 1st sem (without evaluations)",
+    "Curricular units 1st sem (credited)"
+  ))
+head(df)
+```
+
+Data Types and Summary
+
+Note: When I did this in Python, I had float64 and int64 data types which is how I differentiated between categorical/nominal and continous numbers.
+
+```{r}
+str(df)
+summary(df)
+colSums(is.na(df))
+```
+
+Standardize Grades and Rename. Grades are out of 200 in The Portugal so making them out of 100 makes it easier for analysis and explaining.Grading scale: https://withportugal.com/en/blog/ensino-superior-2024
+
+```{r}
+df$`Admission grade` <- df$`Admission grade` / 2
+df$`Previous qualification (grade)` <- df$`Previous qualification (grade)` / 2
+names(df)[names(df) == "Previous qualification (grade)"] <- "Previous qualification grade"
+```
+
+Normalize Economic Indicators because they are all a percentage. You can find that part in the UCI's data card.
+
+```{r}
+df$GDP <- df$GDP / 100
+df$`Inflation rate` <- df$`Inflation rate` / 100
+df$`Unemployment rate` <- df$`Unemployment rate` / 100
+```
+
+Histograms of Continuous Variables to see distributions
+
+```{r}
+library(dplyr)
+
+cont_df <- df %>% select(where(~ typeof(.) == "double"))
+
+hist_data <- df[, numeric_cols]
+par(mfrow=c(3, 3))
+for (col in names(hist_data)) {
+  hist(hist_data[[col]], main=col, col="#5486d6", xlab=col)
+}
+```
+Log-transform for age variable since it is skewed
+
+```{r}
+df$`Age at enrollment` <- log(df$`Age at enrollment`)
+```
+
+This part will deal with continuous variables only
+
+Select Continuous Variables manually since I can't filter them out like in Python
+
+```{r}
+cont_df <- df %>% select("Previous qualification grade", "Admission grade", "Age at enrollment", "Unemployment rate", "Inflation rate", "GDP")
+head(cont_df)
+```
+
+Boxplots for Grades. No outliers found.
+
+```{r}
+par(mfrow=c(1, 2))
+boxplot(df$`Previous qualification grade`, main="Previous Qualification Grade",
+        ylab="Grade", col="lightblue", ylim=c(0, 100))
+boxplot(df$`Admission grade`, main="Admission Grade",
+        ylab="Grade", col="lightblue", ylim=c(0, 100))
+```
+
+Economic Indicators Boxplot. No significant outliers
+
+```{r}
+boxplot(df$`Unemployment rate`, df$`Inflation rate`,
+        names=c("Unemployment rate", "Inflation rate"),
+        main="Economic Indicators", col=c("lightgreen", "lightcoral"),
+        ylab="Value", ylim=c(-0.02, 0.20))
+```
+
+Age at Enrollment Boxplot. The only outlier here is normal since the person's age was 90 years old.
+
+```{r}
+boxplot(df$`Age at enrollment`, main="Age at Enrollment (log-transformed)",
+        ylab="Log(Age)", col="orange")
+```
+
+GDP Boxplot
+
+```{r}
+boxplot(df$GDP, main="GDP", ylab="Value", col="steelblue")
+```
+
+# Correlation Heatmap
+
+```{r}
+# Make sure your correlation matrix is melted before using ggplot2
+
+cor_matrix <- cor(cont_df, use = "complete.obs")
+melted_cor <- melt(cor_matrix)
+
+# Plot heatmap
+ggplot(data = melted_cor, aes(x = Var1, y = Var2, fill = value)) +
+  geom_tile(color = "white") +
+  scale_fill_gradient2(low = "red", high = "blue", mid = "white",
+                       midpoint = 0, limit = c(-1,1), space = "Lab",
+                       name = "Pearson Correlation") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1)) +
+  ggtitle("Continuous Data Correlation")
+
+```
+Manually selecting the categorical variables
+
+```{r}
+# Make a copy of the dataset
+nominal_df <- df %>% select("Marital status", "Application mode", "Application order", "Course", "Previous qualification", "Mother's qualification", "Father's qualification", "Mother's occupation", "Father's occupation")
+
+
+# View first rows
+head(nominal_df)
+
+```
+
+Creating a chi2 function. Not sure of the error here but it still gives the same results as python. Chatgpt says to use fisher's test fallback to handle it. Other than that, all results seem okay even the false ones since they have a relationship with other categorical data
+
+```{r}
+# Required libraries
+library(dplyr)
+library(purrr)
+library(tidyr)
+
+# Define the chi-squared function
+run_chi2_tests <- function(df, categorical_vars, alpha = 0.05) {
+  results <- list()
+
+  # Generate all pairwise combinations
+  pairs <- combn(categorical_vars, 2, simplify = FALSE)
+
+  for (pair in pairs) {
+    var1 <- pair[1]
+    var2 <- pair[2]
+    tbl <- table(df[[var1]], df[[var2]])
+
+    # Try running chi-squared test
+    test_result <- tryCatch({
+      test <- chisq.test(tbl)
+      list(
+        `Variable 1` = var1,
+        `Variable 2` = var2,
+        `Chi2 Stat` = round(test$statistic, 2),
+        `p-value` = test$p.value,
+        `Degrees of Freedom` = test$parameter,
+        `Dependent` = test$p.value <= alpha
+      )
+    }, error = function(e) {
+      list(
+        `Variable 1` = var1,
+        `Variable 2` = var2,
+        `Error` = e$message
+      )
+    })
+
+    results <- append(results, list(test_result))
+  }
+
+  # Convert list of results to a data frame
+  results_df <- bind_rows(results)
+  return(results_df)
+}
+
+# Example nominal variables
+nominal_columns <- c(
+  "Marital status", 
+  "Application mode",
+  "Application order",
+  "Course",
+  "Previous qualification",
+  "Mother's qualification",
+  "Father's qualification",
+  "Mother's occupation", 
+  "Father's occupation"
+)
+
+# Run the test
+chi2_results <- run_chi2_tests(nominal_df, nominal_columns)
+print(chi2_results)
+
+```
+
+Continuous vs continuous variable matrix plot. Probably would remove gdp and both unemployment and inflation rates
+```{r}
+# Load the library
+library(GGally)
+
+# Create the pair plot
+ggpairs(cont_df)
+
+```
