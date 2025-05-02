@@ -1,0 +1,61 @@
+E400 - PROJECT #1: GDP and PCE Regression Analysis
+
+MODEL A: Linear Regression (PCE ~ GDP)
+---------------------------------------
+
+Call:
+lm(formula = PCE ~ GDP, data = data)
+
+Residuals:
+     Min       1Q   Median       3Q      Max 
+-223.870  -59.981    0.497   61.118  199.276 
+
+Coefficients:
+              Estimate Std. Error t value Pr(>|t|)    
+(Intercept) -2.084e+02  1.962e+01  -10.62 9.87e-15 ***
+GDP          6.864e-01  1.532e-03  448.11  < 2e-16 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Residual standard error: 85.82 on 53 degrees of freedom
+Multiple R-squared:  0.9997,	Adjusted R-squared:  0.9997 
+F-statistic: 2.008e+05 on 1 and 53 DF,  p-value: < 2.2e-16
+
+
+
+MODEL B: Log-Log Regression (ln(PCE) ~ ln(GDP))
+---------------------------------------
+
+Call:
+lm(formula = logPCE ~ logGDP, data = data)
+
+Residuals:
+      Min        1Q    Median        3Q       Max 
+-0.031946 -0.007881 -0.000338  0.008258  0.022218 
+
+Coefficients:
+             Estimate Std. Error t value Pr(>|t|)    
+(Intercept) -0.853848   0.016416  -52.01   <2e-16 ***
+logGDP       1.047076   0.001835  570.52   <2e-16 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Residual standard error: 0.01248 on 53 degrees of freedom
+Multiple R-squared:  0.9998,	Adjusted R-squared:  0.9998 
+F-statistic: 3.255e+05 on 1 and 53 DF,  p-value: < 2.2e-16
+
+
+
+MODEL COMPARISON:
+-----------------------------------
+Criterion        | Model A (Linear) | Model B (Log-Log)
+-----------------------------------
+R-squared        | 0.9997          | 0.9998         
+Adjusted R²      | 0.9997          | 0.9998         
+Intercept        | -208.3514       | -0.8538        
+Intercept t-stat | -10.6194        | -52.0119       
+Intercept signif | Significant     | Significant    
+Slope            | 0.6864          | 1.0471         
+Slope t-stat     | 448.1068        | 570.5169       
+Slope signif     | Significant     | Significant    
+-----------------------------------
