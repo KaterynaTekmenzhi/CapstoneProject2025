@@ -1,11 +1,12 @@
 # Student Performance
 
 ## Description
-This project is centered around predicting students' dropout and academic success 
+This project is centered around predicting students' dropout and academic success. Team for the project is Amanny Abuthuraya, Tran Nguyen, Kateryna Tekmenzhi & Lincoln Trelease
 
 ## Table of Contents
 * [Data Source](#datasource)
 * [License](#license)
+* [Technologies](#technologies)
 
 ## Data Source
 * Data Source: https://www.kaggle.com/datasets/mahwiz/students-dropout-and-academic-success-dataset/data
